@@ -1,0 +1,120 @@
+#!/bin/bash
+
+# Copyright (C) 2021, Martin Drößler <m.droessler@handelsblattgroup.com>
+# Copyright (C) 2021, Handelsblatt GmbH
+#
+# This file is part of check_http_content_equals
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+INFO_NAME="check_remote_command"
+INFO_AUTHOR="Martin Drößler <m.droessler@handelsblattgroup.com>"
+INFO_DATE="2021-09-10"
+INFO_LICENSE="GPLv3"
+INFO_VERSION="0.1"
+
+export PATH="$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
+
+# Nagios error codes
+EXIT_OK=0
+EXIT_WARN=1
+EXIT_ERR=2
+EXIT_UNKNOWN=3
+
+# defaults
+sshOptions=""
+
+##
+# Usage
+# @output string  The usage screen.
+# @return integer 0
+print_usage() {
+	printf "Usage:  check_remote_command --user <string> --host <string> --command <string> [--key-file <string>] [--lenient-hkc]\n"
+	printf "OR      %s --help\n" "${INFO_NAME}"
+	printf "OR      %s --version\n\n" "${INFO_NAME}"
+	return 0
+}
+
+##
+# Output version info and credits
+# @output string  version info.
+# @return integer 0
+print_version() {
+	printf "Name:       %s\n" "${INFO_NAME}"
+	printf "Version:    %s (%s)\n" "${INFO_VERSION}" "${INFO_DATE}"
+	printf "Author:     %s\n" "${INFO_AUTHOR}"
+	printf "License:    %s\n" "${INFO_LICENSE}"
+	return 0
+}
+
+if [[ "${1}" = "--help" ]]; then
+	print_usage
+	exit $EXIT_OK
+fi
+if [[ "${1}" = "--version" ]]; then
+	print_version
+	exit $EXIT_OK
+fi
+
+while [ $# -gt 0  ]; do
+	key=$1
+	shift
+	case $key in
+		--user)
+			remote_user="$1"
+			shift
+			;;
+		--host)
+			remote_host="$1"
+			shift
+			;;
+	  --command)
+	  	remote_command="$1"
+	  	shift
+	  	;;
+		--key-file)
+			key_file="$1"
+			shift
+			;;
+		--lenient-hkc)
+			sshOptions="-o StrictHostKeyChecking=no"
+			;;
+		*)
+			echo "Invalid argument: '${1}'"
+			print_usage
+			exit 1
+			;;
+	esac
+done
+
+if [[ -z "${remote_user}" || -z "${remote_host}" || -z "${remote_command}" ]]; then
+	echo "Error! You must specify user, host and command!"
+	print_usage
+	exit 1
+fi
+
+if [[ -n "${key_file}" ]]; then
+	ssh ${sshOptions} -i "${key_file}" ${remote_user}@${remote_host} "${remote_command}"
+else
+	ssh ${sshOptions} ${remote_user}@${remote_host} "${remote_command}"
+fi
+
+result=$?
+
+if [[ ${result} -gt 0 ]]; then
+	exit $EXIT_ERR
+fi
+
+exit $EXIT_OK
