@@ -34,6 +34,7 @@ EXIT_ERR=2
 EXIT_UNKNOWN=3
 
 # defaults
+useRemoteExitCodes=0
 sshOptions=""
 
 ##
@@ -41,7 +42,7 @@ sshOptions=""
 # @output string  The usage screen.
 # @return integer 0
 print_usage() {
-	printf "Usage:  check_remote_command --user <string> --host <string> --command <string> [--key-file <string>] [--lenient-hkc]\n"
+	printf "Usage:  check_remote_command --user <string> --host <string> --command <string> [--key-file <string>] [--lenient-hkc] [--remote-exit-codes]\n"
 	printf "OR      %s --help\n" "${INFO_NAME}"
 	printf "OR      %s --version\n\n" "${INFO_NAME}"
 	return 0
@@ -91,6 +92,9 @@ while [ $# -gt 0  ]; do
 		--lenient-hkc)
 			sshOptions="-o StrictHostKeyChecking=no"
 			;;
+	  --remote-exit-codes)
+	  	useRemoteExitCodes=1
+	  	;;
 		*)
 			echo "Invalid argument: '${1}'"
 			print_usage
@@ -114,7 +118,11 @@ fi
 result=$?
 
 if [[ ${result} -gt 0 ]]; then
-	exit $EXIT_ERR
+	if [[ ${useRemoteExitCodes} -eq 0 ]]; then
+		exit $EXIT_ERR
+	else
+		exit ${result}
+	fi
 fi
 
 exit $EXIT_OK
